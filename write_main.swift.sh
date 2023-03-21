@@ -13,7 +13,7 @@ struct File: Codable {
 typealias FileList = [File]
 
 
-func createFiles(from jsonString: String) {
+func createFiles(outputPath: String, from jsonString: String) {
     guard let jsonData = jsonString.data(using: .utf8) else {
         print(\"Error: Invalid JSON string.\")
         return;
@@ -32,7 +32,8 @@ func createFiles(from jsonString: String) {
 
     for file in fileList {
         do {
-            try file.content.write(toFile: file.filename, atomically: true, encoding: .utf8);
+            let fileURL = URL(fileURLWithPath: outputPath).appendingPathComponent(file.filename)
+            try file.content.write(to: fileURL, atomically: true, encoding: .utf8);
             print(\"Created file: \(file.filename)\");
         } catch {
             print(\"Error: Could not create file \(file.filename)\");
@@ -41,15 +42,16 @@ func createFiles(from jsonString: String) {
 }
 
 
-if CommandLine.arguments.count != 2 {
-    print(\"Usage: ./Project pathToFile\")
+if CommandLine.arguments.count != 3 {
+    print(\"Usage: ./Project outputDirectoryPath pathToFile\")
     exit(1)
 }
 
 
-let pathToFile = CommandLine.arguments[1]
+let outputPath = CommandLine.arguments[1]
+let pathToFile = CommandLine.arguments[2]
 if let jsonString = try? String(contentsOfFile: pathToFile) {
-    createFiles(from: jsonString)
+    createFiles(outputPath: outputPath, from: jsonString)
 } else {
     print(\"Error: Could not read JSON file at path '\(pathToFile)'\")
 }
