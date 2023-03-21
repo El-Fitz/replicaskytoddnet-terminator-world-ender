@@ -1,0 +1,28 @@
+===============
+TEMPLATE:
+
+[{ "file": { "filename": String, "content": String } }, { "script": "{ "name":"Script Title", "content": String } }]
+===============
+PRODUCT REQUIREMENTS:
+The CLI Tool should take two arguments:
+    - a relative or absolute path to an output directory
+    - The path to a json file
+
+The JSON file will follow the above template.
+
+If the output directory or path does not exist, the CLI Tool will create the required directories.
+The CLI Tool will create the files listed in the json file, in the designated output directory.
+The CLI Tool will write each file's content in the appropriate file.
+
+After creating all the files, the CLI tool will make the executable files executable.
+After making the executable files executable, and from the output path, the CLI tool will run the executable files in the order they are listed in the JSON file.
+
+The CLI Tool will catch and log all the errors encountered at runtime.
+===============
+TECHNICAL REQUIREMENTS:
+Language: Swift
+Environment: macOS
+===============
+COMMANDS:
+
+

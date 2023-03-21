@@ -40,14 +40,38 @@ func createFiles(outputPath: String, from jsonString: String) {
         return;
     }
 
-
     for file in fileList {
         do {
             let fileURL = URL(fileURLWithPath: outputPath).appendingPathComponent(file.filename)
             try file.content.write(to: fileURL, atomically: true, encoding: .utf8);
             print(\"Created file: \(file.filename)\");
+            if file.filename.hasSuffix(\".sh\") {
+                try? fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fileURL.path)
+            }
         } catch {
             print(\"Error: Could not create file \(file.filename)\");
+        }
+    }
+
+    for file in fileList {
+        if file.filename.hasSuffix(\".sh\") {
+            do {
+                print(\"Executing file: \(file.filename)\")
+                let task = Process()
+                task.currentDirectoryURL = URL(fileURLWithPath: outputPath)
+                task.executableURL = URL(fileURLWithPath: outputPath).appendingPathComponent(file.filename)
+                task.launchPath = task.executableURL?.path
+                task.arguments = []
+                let pipe = Pipe()
+                task.standardOutput = pipe
+                try task.run()
+                task.waitUntilExit()
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let output = String(data: data, encoding: .utf8)
+                print(\"Output of \(file.filename): \n\(output ?? \"No output\").\")
+            } catch {
+                print(\"Error: Could not execute file \(file.filename)\")
+            }
         }
     }
 }
