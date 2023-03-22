@@ -1,5 +1,9 @@
 import Foundation
 
+struct DirectoryInfo: Codable {
+  let path: String
+}
+
 struct FileInfo: Codable {
   let filename: String
   let content: String
@@ -10,9 +14,28 @@ struct ScriptInfo: Codable {
   let script: String
 }
 
+struct ErrorInfo: Codable {
+  let errors: [String]
+}
+
 enum Item: Codable {
+  case directory(path: String)
   case file(filename: String, content: String)
   case script(name: String, script: String)
+}
+
+var caughtErrors: [String] = []
+
+func createDirectory(at directoryPath: String, directoryInfo: DirectoryInfo) {
+  let directoryURL = URL(fileURLWithPath: directoryPath)
+  do {
+    try FileManager.default.createDirectory(at: directoryURL.appendingPathComponent(directoryInfo.path), withIntermediateDirectories: true, attributes: nil)
+    print("Created directory: \(directoryInfo.path)")
+  } catch {
+    let errorMsg = "Error creating directory: \(directoryInfo.path) - \(error)"
+    print(errorMsg)
+    caughtErrors.append(errorMsg)
+  }
 }
 
 func createFile(at directoryPath: String, fileInfo: FileInfo) {
@@ -22,7 +45,9 @@ func createFile(at directoryPath: String, fileInfo: FileInfo) {
     try fileInfo.content.write(to: fileURL, atomically: true, encoding: .utf8)
     print("Created file: \(fileInfo.filename)")
   } catch {
-    print("Error creating file: \(fileInfo.filename) - \(error)")
+    let errorMsg = "Error creating file: \(fileInfo.filename) - \(error)"
+    print(errorMsg)
+    caughtErrors.append(errorMsg)
   }
 }
 
@@ -33,7 +58,9 @@ func runScript(from directoryPath: String, scriptInfo: ScriptInfo) {
   task.arguments = ["-c", scriptInfo.script]
 
   let outputPipe = Pipe()
+  let errorPipe = Pipe()
   task.standardOutput = outputPipe
+  task.standardError = errorPipe
 
   do {
     try task.run()
@@ -41,15 +68,24 @@ func runScript(from directoryPath: String, scriptInfo: ScriptInfo) {
 
     let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
     let output = String(data: outputData, encoding: .utf8)
-    print("Script '\(scriptInfo.name)' output:\n\(output ?? "")")
+    let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+    let error = String(data: errorData, encoding: .utf8)
+    if let error {
+      caughtErrors.append(error)
+    }
+    print("Script '\(scriptInfo.name)' output:\n\(output ?? ""), error:\n\(error ?? "")")
   } catch {
-    print("Error running script: \(scriptInfo.name) - \(error)")
+    let errorMsg = "Error running script: \(scriptInfo.name) - \(error)"
+    print(errorMsg)
+    caughtErrors.append(errorMsg)
   }
 }
 
 func processItems(at directoryPath: String, items: [Item]) {
   for item in items {
     switch item {
+      case let .directory(path):
+      createDirectory(at: directoryPath, directoryInfo: .init(path: path))
     case let .file(filename, content):
       createFile(at: directoryPath, fileInfo: .init(filename: filename, content: content))
     case let .script(name, script):
@@ -58,7 +94,21 @@ func processItems(at directoryPath: String, items: [Item]) {
   }
 }
 
+func writeErrors() {
+  guard !caughtErrors.isEmpty else { return }
+  let errorInfo = ErrorInfo(errors: caughtErrors)
+  let errorFileURL = URL(fileURLWithPath: "./errors.json")
+  do {
+    let errorData = try JSONEncoder().encode(errorInfo)
+    try errorData.write(to: errorFileURL, options: .atomicWrite)
+  } catch {
+    print("Error writing errors.json: \(error)")
+  }
+}
+
 func main() {
+  defer { writeErrors() }
+
   guard CommandLine.arguments.count == 3 else {
     print("Usage: ./cliTool <output-directory> <path-to-json>")
     return
@@ -72,7 +122,9 @@ func main() {
     let items = try JSONDecoder().decode([Item].self, from: jsonData)
     processItems(at: outputDirectory, items: items)
   } catch {
-    print("Error processing JSON file: \(error)")
+    let errorMsg = "Error processing JSON file: \(error)"
+    print(errorMsg)
+    caughtErrors.append(errorMsg)
   }
 }
 
