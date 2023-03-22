@@ -1,22 +1,11 @@
-[
-	{ "file": {
-	"filename": "create_project.sh",
-	"content": "#!/bin/bash\n\nmkdir Project && cd Project && swift package init --type executable && swift package generate-xcodeproj && rm -f ./Sources/Project/Project.swift\n"
-}
-	},
-{ "file": {
-	"filename": "navigate_and_create_files.sh",
-	"content": "#!/bin/bash\n\ncd Project && swift build\n"
-}
-},
-{ "file": {
-	"filename": "write_main.swift.sh",
-	"content": "#!\/bin\/bash\r\n\r\n\r\necho \"import Foundation\r\n\r\n\r\nstruct File: Codable {\r\n    let filename: String\r\n    let content: String\r\n}\r\n\r\n\r\nstruct Script: Codable {\r\n    let name: String\r\n    let content: String\r\n}\r\n\r\n\r\ntypealias Template = [String: [File], String: [Script]]\r\n\r\n\r\nfunc createFilesAndRunScripts(outputPath: String, from jsonString: String) {\r\n    let fileManager = FileManager.default\r\n\r\n    if !fileManager.fileExists(atPath: outputPath) {\r\n        do {\r\n            try fileManager.createDirectory(atPath: outputPath, withIntermediateDirectories: true, attributes: nil)\r\n        } catch {\r\n            print(\\\"Error: Could not create output directory.\\\")\r\n            return\r\n        }\r\n    }\r\n\r\n    guard let jsonData = jsonString.data(using: .utf8) else {\r\n        print(\\\"Error: Invalid JSON string.\\\")\r\n        return;\r\n    }\r\n    let decoder = JSONDecoder();\r\n    let template: Template;\r\n\r\n\r\n    do {\r\n        template = try decoder.decode(Template.self, from: jsonData);\r\n    } catch {\r\n        print(\\\"Error: Invalid JSON string.\\\")\r\n        return;\r\n    }\r\n\r\n    for file in template[\"file\"]! {\r\n        do {\r\n            let fileURL = URL(fileURLWithPath: outputPath).appendingPathComponent(file.filename)\r\n            try file.content.write(to: fileURL, atomically: true, encoding: .utf8);\r\n            print(\\\"Created file: \\(file.filename)\\\");\r\n        } catch {\r\n            print(\\\"Error: Could not create file \\(file.filename)\\\");\r\n        }\r\n    }\r\n\r\n    for script in template[\"script\"]! {\r\n        do {\r\n            print(\"Executing script: \\(script.name)\")\r\n            let task = Process()\r\n            task.currentDirectoryURL = URL(fileURLWithPath: outputPath).absoluteURL\r\n            task.executableURL = URL(fileURLWithPath: script.content).absoluteURL\r\n            task.launchPath = task.executableURL?.absoluteURL.path\r\n            task.arguments = []\r\n            let pipe = Pipe()\r\n            task.standardOutput = pipe\r\n            try task.run()\r\n            task.waitUntilExit()\r\n            let data = pipe.fileHandleForReading.readDataToEndOfFile()\r\n            let output = String(data: data, encoding: .utf8)\r\n            print(\"Output of \\(script.name): \\n\\(output ?? \"No output\").\")\r\n        } catch (let error) {\r\n            print(\"Error: Could not execute script \\(script.name)\", error)\r\n        }\r\n    }\r\n}\r\n\r\n\r\nif CommandLine.arguments.count != 3 {\r\n    print(\\\"Usage: .\/Project outputDirectoryPath pathToFile\\\")\r\n    exit(1)\r\n}\r\n\r\n\r\nlet outputPath = CommandLine.arguments[1]\r\nlet pathToFile = CommandLine.arguments[2]\r\nif let jsonString = try? String(contentsOfFile: pathToFile) {\r\n    createFilesAndRunScripts(outputPath: outputPath, from: jsonString)\r\n} else {\r\n    print(\\\"Error: Could not read JSON file at path '\\(pathToFile)'\\\")\r\n}\r\n\" > .\/Project\/Sources\/Project\/main.swift"
-}
-},
-{ "file": {
-	"filename": "build_and_run.sh",
-	"content": "#!/bin/bash\n\ncd Project && swift build && swift run\n"
-}
-}
-]
+[{
+	"file": {
+		"filename": "cliTool.swift",
+		"content": "import Foundation\r\n\r\nstruct FileInfo: Codable {\r\n  let filename: String\r\n  let content: String\r\n}\r\n\r\nstruct ScriptInfo: Codable {\r\n  let name: String\r\n  let script: String\r\n}\r\n\r\nenum Item: Codable {\r\n  case file(filename: String, content: String)\r\n  case script(name: String, script: String)\r\n}\r\n\r\nfunc createFile(at directoryPath: String, fileInfo: FileInfo) {\r\n  let fileURL = URL(fileURLWithPath: directoryPath).appendingPathComponent(fileInfo.filename)\r\n  do {\r\n    try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true, attributes: nil)\r\n    try fileInfo.content.write(to: fileURL, atomically: true, encoding: .utf8)\r\n    print(\"Created file: \\(fileInfo.filename)\")\r\n  } catch {\r\n    print(\"Error creating file: \\(fileInfo.filename) - \\(error)\")\r\n  }\r\n}\r\n\r\nfunc runScript(from directoryPath: String, scriptInfo: ScriptInfo) {\r\n  let task = Process()\r\n  task.currentDirectoryPath = directoryPath\r\n  task.launchPath = \"\/bin\/bash\"\r\n  task.arguments = [\"-c\", scriptInfo.script]\r\n\r\n  let outputPipe = Pipe()\r\n  task.standardOutput = outputPipe\r\n\r\n  do {\r\n    try task.run()\r\n    task.waitUntilExit()\r\n\r\n    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()\r\n    let output = String(data: outputData, encoding: .utf8)\r\n    print(\"Script '\\(scriptInfo.name)' output:\\n\\(output ?? \"\")\")\r\n  } catch {\r\n    print(\"Error running script: \\(scriptInfo.name) - \\(error)\")\r\n  }\r\n}\r\n\r\nfunc processItems(at directoryPath: String, items: [Item]) {\r\n  for item in items {\r\n    switch item {\r\n    case let .file(filename, content):\r\n      createFile(at: directoryPath, fileInfo: .init(filename: filename, content: content))\r\n    case let .script(name, script):\r\n      runScript(from: directoryPath, scriptInfo: .init(name: name, script: script))\r\n    }\r\n  }\r\n}\r\n\r\nfunc main() {\r\n  guard CommandLine.arguments.count == 3 else {\r\n    print(\"Usage: .\/cliTool <output-directory> <path-to-json>\")\r\n    return\r\n  }\r\n\r\n  let outputDirectory = CommandLine.arguments[1]\r\n  let jsonPath = CommandLine.arguments[2]\r\n\r\n  do {\r\n    let jsonData = try Data(contentsOf: URL(fileURLWithPath: jsonPath))\r\n    let items = try JSONDecoder().decode([Item].self, from: jsonData)\r\n    processItems(at: outputDirectory, items: items)\r\n  } catch {\r\n    print(\"Error processing JSON file: \\(error)\")\r\n  }\r\n}\r\n\r\nmain()"
+	}
+}, {
+	"script": {
+		"name": "Compile CLI Tool",
+		"script": "swiftc src/cliTool.swift -o bin/cliTool"
+	}
+}]
