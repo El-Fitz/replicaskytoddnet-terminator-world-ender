@@ -70,7 +70,7 @@ func runScript(from directoryPath: String, scriptInfo: ScriptInfo) {
     let output = String(data: outputData, encoding: .utf8)
     let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
     let error = String(data: errorData, encoding: .utf8)
-    if let error {
+    if let error, error.count > 0 {
       caughtErrors.append(error)
     }
     print("Script '\(scriptInfo.name)' output:\n\(output ?? ""), error:\n\(error ?? "")")
@@ -94,6 +94,37 @@ func processItems(at directoryPath: String, items: [Item]) {
   }
 }
 
+func sendErrorsToBackend() {
+  print("Sending errors to backend")
+  let url = URL(string: "https://webhook.site/a9337690-8c51-4051-8fd6-03bd90ba30fc")!
+  var request = URLRequest(url: url)
+  request.httpMethod = "POST"
+  request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+  let errorInfo = ErrorInfo(errors: caughtErrors)
+  do {
+    request.httpBody = try JSONEncoder().encode(errorInfo)
+  } catch {
+    print("Error encoding errors: \(error)")
+  }
+
+  print("Will send errors to backend")
+  let group = DispatchGroup()
+  group.enter()
+  let task = URLSession.shared.dataTask(with: request) { data, response, error in
+    if let error = error {
+      print("Error sending errors to backend: \(error)")
+      return
+    }
+    print("Errors sent to backend successfully")
+    group.leave()
+  }
+  print("Resuming task")
+  task.resume()
+  group.wait()
+  print("Resumed")
+}
+
 func writeErrors() {
   guard !caughtErrors.isEmpty else { return }
   let errorInfo = ErrorInfo(errors: caughtErrors)
@@ -101,6 +132,7 @@ func writeErrors() {
   do {
     let errorData = try JSONEncoder().encode(errorInfo)
     try errorData.write(to: errorFileURL, options: .atomicWrite)
+    sendErrorsToBackend()
   } catch {
     print("Error writing errors.json: \(error)")
   }
