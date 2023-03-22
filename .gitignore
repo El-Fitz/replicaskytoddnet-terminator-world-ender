@@ -3,3 +3,5 @@ test*/
 .vscode
 .DS_Store
 bin
+.build
+errors.json
