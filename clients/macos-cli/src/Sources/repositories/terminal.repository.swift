@@ -77,6 +77,19 @@ class TerminalRepository {
     }
     print(text)
   }
+
+	func printCodable(_ codable: Codable, inline: Bool = false) {
+		let encoder = JSONEncoder()
+		encoder.outputFormatting = .prettyPrinted
+		do {
+			let data = try encoder.encode(codable)
+			if let string = String(data: data, encoding: .utf8) {
+				printText(string, inline: inline)
+			}
+		} catch {
+			printText("Error: \(error.localizedDescription)", inline: inline)
+		}
+	}
   
   func clearScreen() {
     print("\u{001B}[2J")

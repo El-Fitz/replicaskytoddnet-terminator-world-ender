@@ -196,7 +196,7 @@ struct FilesRepository {
         return try? FilesRepository.readTypedFile([FileDefinition].self, at: Directory.artifacts(outputDirectory: outputDirectory).path + "/files-definitions.json")
     }
 
-    static func saveScriptsDefinitions(_ scriptsDefinitions: [ScriptDefinition], in outputDirectory: String) throws -> String {
+    static func saveScriptsDefinitions(_ scriptsDefinitions: ScriptsDefinitions, in outputDirectory: String) throws -> String {
         return try saveCodable(scriptsDefinitions, in: .artifacts(outputDirectory: outputDirectory), named: "scripts-definitions.json")
     }
 
