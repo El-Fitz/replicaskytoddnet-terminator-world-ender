@@ -55,7 +55,7 @@ extension Generate {
 			let templates = try readTemplateFiles(in: directoryPath + "/templates")
 			print("✅ Requirements Found")
 			print()
-			return ProjectRequirements(requirements: DefinitionRequirements(functional: functionalRequirements, technical: technicalRequirements), templates: templates)
+			return ProjectRequirements(requirements: ProjectRequirementsDefinition(functional: functionalRequirements, technical: technicalRequirements), templates: templates)
 		}
 	}
 }

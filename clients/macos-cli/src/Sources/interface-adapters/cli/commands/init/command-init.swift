@@ -192,7 +192,7 @@ extension Init {
 		}
 	}
 
-	func getProjectRequirementsDefinitions(openaiRepository: OpenaiChatRepository) async throws -> DefinitionRequirements {
+	func getProjectRequirementsDefinitions(openaiRepository: OpenaiChatRepository) async throws -> ProjectRequirementsDefinition {
 		let (userProvidedProjectName, functionalRequirements) = getProjectsFunctionalRequirements()
 		let technicalRequirements = try await getProjectTechnicalRequirements(for: functionalRequirements, using: openaiRepository)
 
@@ -205,7 +205,7 @@ extension Init {
 		}()
 
 		let functionalDescription = projectDescription(from: projectName, and: functionalRequirements)
-		return DefinitionRequirements(functional: functionalDescription, technical: technicalRequirements)
+		return ProjectRequirementsDefinition(functional: functionalDescription, technical: technicalRequirements)
 	}
 
 	func save(_ functionalRequirements: DefinitionFunctionalRequirements, outputDirectory: String) throws {

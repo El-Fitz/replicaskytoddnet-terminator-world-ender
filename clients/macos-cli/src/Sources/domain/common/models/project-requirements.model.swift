@@ -1,4 +1,4 @@
 struct ProjectRequirements: Codable, Hashable {
-	let requirements: DefinitionRequirements
+	let requirements: ProjectRequirementsDefinition
 	let templates: [RequirementsTemplate]
 }
