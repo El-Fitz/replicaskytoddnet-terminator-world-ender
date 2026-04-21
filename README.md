@@ -1,5 +1,13 @@
 # ReplicaSkyToddNet Terminator World-Ender (Toddinator, for short)
 
+
+⚠️ An early (archived) attempt at *bootstraping* something *like* an agentic coding harness in January / March 2023, using itself (first raw OpenAI curls, then progressively switching to the tool itself as it gained in capabilities), before the release of Function Calling ([June 2023](https://openai.com/index/function-calling-and-other-api-updates/)), JSON mode ([November 2023](https://klu.ai/blog/openai-devday-2023) I believe, but not sure), and Structured Outputs ([August 2024](https://openai.com/index/introducing-structured-outputs-in-the-api/)).
+
+It turned out to be an uphill battle as GPT-3.5 and model capqbilities proved insufficient and unreliable.
+
+Yes, there's a leaked OpenAI, but it has been revoked.
+
+
 ## Use Cases
 
 ### Create a new project
